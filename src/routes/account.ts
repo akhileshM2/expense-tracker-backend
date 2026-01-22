@@ -1,8 +1,6 @@
 import express from "express"
 import { prismaClient } from "../db"
 import redis from "../redisClient"
-import { Prisma } from "@prisma/client"
-import { JWT_SECRET } from "../config"
 import jwt, { JwtPayload } from "jsonwebtoken"
 
 const app = express()
@@ -12,7 +10,7 @@ export const accountRouter = express.Router();
 
 accountRouter.get("/items", async (req, res) => {
     const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, JWT_SECRET) as JwtPayload
+    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
     const email = decoded.email
     console.log(decoded)
 
@@ -41,7 +39,7 @@ accountRouter.post("/additem", async (req, res) => {
     const nextItemNo = await redis.incr(key);
 
     const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, JWT_SECRET) as JwtPayload
+    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
     const email = decoded.email
     console.log(decoded)
 
@@ -69,7 +67,7 @@ accountRouter.post("/additem", async (req, res) => {
 
 accountRouter.put("/changeitem", async (req, res) => {
     const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, JWT_SECRET) as JwtPayload
+    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
     const email = decoded.email
 
     if (!req.body.id || email != req.body.email) {
@@ -122,7 +120,7 @@ accountRouter.delete("/removeitem/user/:userId/items/:itemNo", async (req, res) 
     const {userId, itemNo} = req.params
 
     const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, JWT_SECRET) as JwtPayload
+    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
     const email = decoded.email
     console.log(decoded)
 

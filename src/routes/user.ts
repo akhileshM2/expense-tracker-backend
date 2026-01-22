@@ -1,8 +1,7 @@
 import express from "express"
 import { prismaClient } from "../db";
-import { email, z } from "zod";
+import { z } from "zod";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config";
 
 export const userRouter = express.Router()
 
@@ -67,7 +66,7 @@ userRouter.post('/signup', async (req, res) => {
                 password: req.body.password
             }
         })
-        const token = jwt.sign({email: request.email}, JWT_SECRET)
+        const token = jwt.sign({email: request.email}, process.env.JWT_SECRET || "")
 
         res.json({
             message: "Signed Up!",
@@ -113,7 +112,7 @@ userRouter.post("/signin", async (req, res) => {
     }
 
     else {
-        const token = jwt.sign({email}, JWT_SECRET)
+        const token = jwt.sign({email}, process.env.JWT_SECRET || "")
         res.status(200).json({
             token: token,
             name: request? request.name : null,
