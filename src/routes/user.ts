@@ -57,6 +57,7 @@ userRouter.post('/signup', async (req, res) => {
             res.status(411).json({
                 message: "Email already taken / Incorrect inputs"
             })
+            return
         }
 
         const request = await prismaClient.user.create({
@@ -89,6 +90,7 @@ userRouter.post("/signin", async (req, res) => {
         res.status(411).json({
             message: "Incorrect inputs"
         })
+        return
     }
 
     const request = await prismaClient.user.findUnique({
