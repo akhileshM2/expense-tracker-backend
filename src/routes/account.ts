@@ -14,24 +14,29 @@ accountRouter.get("/items", async (req, res) => {
     const email = decoded.email
     console.log(decoded)
 
-    const itemList = await prismaClient.items.findMany({
-        where: {
-            userId: email
-        },
-        select: {
-            itemNo: true,
-            item: true,
-            cost: true
-        }
-    })
+    try {
+        const itemList = await prismaClient.items.findMany({
+            where: {
+                userId: email
+            },
+            select: {
+                itemNo: true,
+                item: true,
+                cost: true
+            }
+        })
 
-    res.status(200).json({
-        items: itemList.map(items => ({
-            id: items.itemNo,
-            item: items.item,
-            cost: items.cost
-        }))
-    })
+        res.status(200).json({
+            items: itemList.map(items => ({
+                id: items.itemNo,
+                item: items.item,
+                cost: items.cost
+            }))
+        })
+    } catch (err) {
+        console.error(err)
+        return
+    }
 })
 
 accountRouter.post("/additem", async (req, res) => {
