@@ -12,24 +12,29 @@ const signupSchema = z.object({
 })
 
 userRouter.get('/bulk', async (req, res) => {
-    const users = await prismaClient.user.findMany({
-        where: {
-            name: req.body.name
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true
-        }
-    })
+    try {
+        const users = await prismaClient.user.findMany({
+            where: {
+                name: req.body.name
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true
+            }
+        })
 
-    res.status(200).json({
-        user: users.map(user => ({
-            name: user.name,
-            email: user.email,
-            id: user.id
-        }))
-    })
+        res.status(200).json({
+            user: users.map(user => ({
+                name: user.name,
+                email: user.email,
+                id: user.id
+            }))
+        })
+    } catch (err) {
+        console.error(err)
+        return
+    }
 })
 
 userRouter.post('/signup', async (req, res) => {
