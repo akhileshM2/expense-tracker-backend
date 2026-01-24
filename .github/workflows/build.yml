@@ -27,7 +27,8 @@ jobs:
     - name: Generate prisma client
       env:
         DATABASE_URL: ${{ vars.DATABASE_URL }}
-      run: npm run db:generate
+      run: |
+          npm run db:generate
 
     - name: Run build
       run: npm run build
