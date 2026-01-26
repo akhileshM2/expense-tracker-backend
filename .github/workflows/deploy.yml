@@ -54,4 +54,5 @@ jobs:
               --name backend-container \
               -p 3000:3000 \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-backend:latest
