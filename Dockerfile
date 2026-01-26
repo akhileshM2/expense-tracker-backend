@@ -3,6 +3,11 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
+# 1. Define the ARG (This receives the value from GitHub)
+ARG DATABASE_URL
+# 2. Set the ENV (This makes it available to 'npm run db:generate')
+ENV DATABASE_URL=$DATABASE_URL
+
 # Copy package files first to leverage Docker cache
 COPY package*.json ./
 COPY prisma ./prisma/
