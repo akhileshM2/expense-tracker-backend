@@ -25,7 +25,7 @@ accountRouter.get("/items", async (req, res) => {
         }
     })
 
-    res.status(200).json({
+    return res.status(200).json({
         items: itemList.map(items => ({
             id: items.itemNo,
             item: items.item,
@@ -44,10 +44,9 @@ accountRouter.post("/additem", async (req, res) => {
     console.log(decoded)
 
     if (email != req.body.userId) {
-        res.status(411).json({
+        return res.status(411).json({
             message: "User not found. Please try again."
         })
-        return
     }
 
     const request = await prismaClient.items.create({
@@ -59,7 +58,7 @@ accountRouter.post("/additem", async (req, res) => {
         }
     })
 
-    res.json({
+    return res.json({
         message: "Item added!",
         id: request.itemNo
     })
@@ -71,10 +70,9 @@ accountRouter.put("/changeitem", async (req, res) => {
     const email = decoded.email
 
     if (!req.body.id || email != req.body.email) {
-        res.status(411).json({
+        return res.status(411).json({
             message: "User not found. Please try again."
         })
-        return
     }
 
     const userId = await prismaClient.items.findUnique({
@@ -91,10 +89,9 @@ accountRouter.put("/changeitem", async (req, res) => {
     })
 
     if (!userId) {
-        res.status(411).json({
+        return res.status(411).json({
             message: "User not found. Please try again."
         })
-        return
     }
 
     const request = await prismaClient.items.update({
@@ -108,7 +105,7 @@ accountRouter.put("/changeitem", async (req, res) => {
         }
     })
 
-    res.status(200).json({
+    return res.status(200).json({
         message: "Item updated!",
         id: request.id,
         item: request.item,
@@ -122,7 +119,6 @@ accountRouter.delete("/removeitem/user/:userId/items/:itemNo", async (req, res) 
     const header = req.header("Authorization") || ""
     const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
     const email = decoded.email
-    console.log(decoded)
 
     if (email != userId) {
         res.status(411).json({
