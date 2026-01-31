@@ -29,7 +29,7 @@ model Items {
   itemNo      Int
   cost        Int
   userId      String
-  user        User      @relation(fields: [userId], references: [email])
+  user        User      @relation(fields: [userId], references: [email], onDelete: Cascade)
 
   @@unique([userId, itemNo])
 }
