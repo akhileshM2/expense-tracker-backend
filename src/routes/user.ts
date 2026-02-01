@@ -84,10 +84,10 @@ userRouter.post('/signup', async (req, res) => {
             })
             const token = jwt.sign({email: request.email}, process.env.JWT_SECRET || "")
 
-            return res.json({
+            return res.status(200).json({
                 message: "Signed Up!",
                 email: request.email,
-                key: token,
+                token: token,
                 name: request.name,
                 id: request.id
             })
