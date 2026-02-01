@@ -14,24 +14,30 @@ accountRouter.get("/items", async (req, res) => {
     const email = decoded.email
     console.log(decoded)
 
-    const itemList = await prismaClient.items.findMany({
-        where: {
-            userId: email
-        },
-        select: {
-            itemNo: true,
-            item: true,
-            cost: true
-        }
-    })
+    try {
+        const itemList = await prismaClient.items.findMany({
+            where: {
+                userId: email
+            },
+            select: {
+                itemNo: true,
+                item: true,
+                cost: true
+            }
+        })
 
-    return res.status(200).json({
-        items: itemList.map(items => ({
-            id: items.itemNo,
-            item: items.item,
-            cost: items.cost
-        }))
-    })
+        return res.status(200).json({
+            items: itemList.map(items => ({
+                id: items.itemNo,
+                item: items.item,
+                cost: items.cost
+            }))
+        })
+    } catch(err) {
+        res.status(411).json({
+            message: "Error while fetching items."
+        })
+    }
 })
 
 accountRouter.post("/additem", async (req, res) => {
@@ -49,19 +55,25 @@ accountRouter.post("/additem", async (req, res) => {
         })
     }
 
-    const request = await prismaClient.items.create({
-        data: {
-            item: req.body.item,
-            itemNo: nextItemNo,
-            cost: req.body.cost,
-            userId: email
-        }
-    })
+    try {
+        const request = await prismaClient.items.create({
+            data: {
+                item: req.body.item,
+                itemNo: nextItemNo,
+                cost: req.body.cost,
+                userId: email
+            }
+        })
 
-    return res.json({
-        message: "Item added!",
-        id: request.itemNo
-    })
+        return res.json({
+            message: "Item added!",
+            id: request.itemNo
+        })
+    } catch(err) {
+        res.status(411).json({
+            message: "Error while adding item."
+        })
+    }
 })
 
 accountRouter.put("/changeitem", async (req, res) => {
@@ -75,42 +87,48 @@ accountRouter.put("/changeitem", async (req, res) => {
         })
     }
 
-    const userId = await prismaClient.items.findUnique({
-        where: {
-            item: req.body.item,
-            userId_itemNo: {
-                userId: req.body.email,
-                itemNo: req.body.id
+    try {
+        const userId = await prismaClient.items.findUnique({
+            where: {
+                item: req.body.item,
+                userId_itemNo: {
+                    userId: req.body.email,
+                    itemNo: req.body.id
+                }
+            },
+            select: {
+                id: true
             }
-        },
-        select: {
-            id: true
-        }
-    })
+        })
 
-    if (!userId) {
-        return res.status(411).json({
-            message: "User not found. Please try again."
+        if (!userId) {
+            return res.status(411).json({
+                message: "User not found. Please try again."
+            })
+        }
+
+        const request = await prismaClient.items.update({
+            where: {
+                id: userId?.id,
+                userId: req.body.email
+            },
+            data: {
+                item: req.body.newItemName,
+                cost: req.body.cost
+            }
+        })
+
+        return res.status(200).json({
+            message: "Item updated!",
+            id: request.id,
+            item: request.item,
+            cost: request.cost
+        })
+    } catch(err) {
+        res.status(411).json({
+            message: "Error while updating item."
         })
     }
-
-    const request = await prismaClient.items.update({
-        where: {
-            id: userId?.id,
-            userId: req.body.email
-        },
-        data: {
-            item: req.body.newItemName,
-            cost: req.body.cost
-        }
-    })
-
-    return res.status(200).json({
-        message: "Item updated!",
-        id: request.id,
-        item: request.item,
-        cost: request.cost
-    })
 })
 
 accountRouter.delete("/removeitem/user/:userId/items/:itemNo", async (req, res) => {

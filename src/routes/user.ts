@@ -13,24 +13,30 @@ const signupSchema = z.object({
 })
 
 userRouter.get('/bulk', async (req, res) => {
-    const users = await prismaClient.user.findMany({
-        where: {
-            name: req.body.name
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true
-        }
-    })
+    try {
+        const users = await prismaClient.user.findMany({
+            where: {
+                name: req.body.name
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true
+            }
+        })
 
-    return res.status(200).json({
-        user: users.map(user => ({
-            name: user.name,
-            email: user.email,
-            id: user.id
-        }))
-    })
+        return res.status(200).json({
+            user: users.map(user => ({
+                name: user.name,
+                email: user.email,
+                id: user.id
+            }))
+        })
+    } catch(err) {
+        res.status(411).json({
+            message: "Error while fetching users. Please try again."
+        })
+    }
 })
 
 userRouter.post('/signup', async (req, res) => {
@@ -43,40 +49,53 @@ userRouter.post('/signup', async (req, res) => {
     }
     
     else {
-        const user = await prismaClient.user.findUnique({
-            where: {
-                email: req.body.email
-            },
-            select: {
-                id: true,
-                name: true
-            }
-        })
+        try {
+            const user = await prismaClient.user.findUnique({
+                where: {
+                    email: req.body.email
+                },
+                select: {
+                    id: true,
+                    name: true
+                }
+            })
 
-        if(user) {
-            return res.status(411).json({
-                message: "Email already taken / Incorrect inputs"
+            if(user) {
+                return res.status(411).json({
+                    message: "Email already taken / Incorrect inputs"
+                })
+            }
+        } catch(err) {
+            res.status(411).json({
+                message: "Error while searching for user."
             })
         }
 
         const SALT_ROUNDS = 10
         const hashedPassword = await bcrypt.hash(req.body.password, SALT_ROUNDS)
 
-        const request = await prismaClient.user.create({
-            data: {
-                email: req.body.email,
-                name: req.body.name,
-                password: hashedPassword
-            }
-        })
-        const token = jwt.sign({email: request.email}, process.env.JWT_SECRET || "")
+        try {
+            const request = await prismaClient.user.create({
+                data: {
+                    email: req.body.email,
+                    name: req.body.name,
+                    password: hashedPassword
+                }
+            })
+            const token = jwt.sign({email: request.email}, process.env.JWT_SECRET || "")
 
-        return res.json({
-            message: "Signed Up!",
-            email: request.email,
-            key: token,
-            name: request.name
-        })
+            return res.json({
+                message: "Signed Up!",
+                email: request.email,
+                key: token,
+                name: request.name,
+                id: request.id
+            })
+        } catch(err) {
+            res.status(411).json({
+                message: "Error while signing up user. Please try again."
+            })
+        }
     }
 })
 
@@ -94,45 +113,130 @@ userRouter.post("/signin", async (req, res) => {
         })
     }
 
-    const request = await prismaClient.user.findUnique({
-        where: {
-            email: req.body.email
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            password: true
+    try {
+        const request = await prismaClient.user.findUnique({
+            where: {
+                email: req.body.email
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                password: true
+            }
+        })
+
+        if (!request) {
+            return res.status(401).json({
+                error: "Invalid credentials"
+            })
         }
-    })
 
-    if (!request) {
-        return res.status(401).json({
-            error: "Invalid credentials"
-        })
-    }
+        const isMatch = await bcrypt.compare(req.body.password, request.password)
 
-    const isMatch = await bcrypt.compare(req.body.password, request.password)
+        if (!isMatch) {
+            return res.status(401).json({ 
+                error: "Invalid credentials" 
+            })
+        }
 
-    if (!isMatch) {
-        return res.status(401).json({ 
-            error: "Invalid credentials" 
-        })
-    }
+        const email = request? request.email : null
+        if (!email) {
+            return res.status(411).json({
+                message: "User does not exist, please try again!"
+            })
+        }
 
-    const email = request? request.email : null
-    if (!email) {
+        else {
+            const token = jwt.sign({email}, process.env.JWT_SECRET || "")
+            return res.status(200).json({
+                token: token,
+                name: request? request.name : null,
+                email: request?.email,
+                id: request.id
+            })
+        }
+    } catch(err) {
+        console.log(err)
         return res.status(411).json({
-            message: "User does not exist, please try again!"
+            message: "Error while signing in user."
+        })
+    }
+})
+
+const newPasswordSchema = z.object({
+    userId: z.email(),
+    oldPassword: z.string().min(8),
+    newPassword: z.string().min(8)
+})
+
+userRouter.put("/changePassword", async (req, res) => {
+    const { success } = newPasswordSchema.safeParse(req.body)
+
+    if(!success) {
+        return res.status(411).json({
+            message: "Incorrect inputs"
         })
     }
 
-    else {
-        const token = jwt.sign({email}, process.env.JWT_SECRET || "")
+    const { userId, oldPassword, newPassword } = req.body
+
+    if (oldPassword === newPassword) {
+        return res.status(411).json({
+            message: "New password cannot be same as the old password."
+        })
+    }
+
+    const header = req.header("Authorization") || ""
+    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
+    const email = decoded.email
+
+    if (email != userId) {
+        return res.status(411).json({
+            message: "User not found. Please try again."
+        })
+    }
+    
+    
+    try {
+        const user = await prismaClient.user.findUnique({
+            where: {
+                email: userId
+            },
+            select: {
+                id: true
+            }
+        })
+
+        if(!user) {
+            return res.status(411).json({
+                message: "User not found. Please check you data and try again."
+            })
+        }
+
+        const SALT_ROUNDS = 10
+        const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
+
+   
+        const request = await prismaClient.user.update({
+            where: {
+                email: userId,
+                id: user.id
+            },
+            data: {
+                password: hashedPassword
+            }
+        })
+
         return res.status(200).json({
-            token: token,
-            name: request? request.name : null,
-            email: request?.email
+            message: "Password changed successfully!",
+            email: request.email,
+            id: request.id
+        })
+    } catch(err) {
+        console.error("Error occured while changing password.", err)
+        return res.status(411).json({
+            message: "Error occured while changing password."
         })
     }
 })
