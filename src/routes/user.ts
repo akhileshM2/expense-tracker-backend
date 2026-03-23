@@ -3,6 +3,7 @@ import { prismaClient } from "../db";
 import { z } from "zod";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import bcrypt from 'bcrypt';
+import { authMiddleware } from "../middleware/authMiddleware";
 
 export const userRouter = express.Router()
 
@@ -12,7 +13,7 @@ const signupSchema = z.object({
     name: z.string()
 })
 
-userRouter.get('/bulk', async (req, res) => {
+userRouter.get('/bulk', authMiddleware, async (req, res) => {
     try {
         const users = await prismaClient.user.findMany({
             where: {
@@ -82,7 +83,7 @@ userRouter.post('/signup', async (req, res) => {
                     password: hashedPassword
                 }
             })
-            const token = jwt.sign({email: request.email}, process.env.JWT_SECRET || "")
+            const token = "Bearer " + jwt.sign({email: request.email}, process.env.JWT_SECRET || "")
 
             return res.status(200).json({
                 message: "Signed Up!",
@@ -148,7 +149,7 @@ userRouter.post("/signin", async (req, res) => {
         }
 
         else {
-            const token = jwt.sign({email}, process.env.JWT_SECRET || "")
+            const token = "Bearer " + jwt.sign({email}, process.env.JWT_SECRET || "")
             return res.status(200).json({
                 token: token,
                 name: request? request.name : null,
@@ -170,7 +171,7 @@ const newPasswordSchema = z.object({
     newPassword: z.string().min(8)
 })
 
-userRouter.put("/changePassword", async (req, res) => {
+userRouter.put("/changePassword", authMiddleware, async (req, res) => {
     const { success } = newPasswordSchema.safeParse(req.body)
 
     if(!success) {
@@ -187,11 +188,7 @@ userRouter.put("/changePassword", async (req, res) => {
         })
     }
 
-    const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
-    const email = decoded.email
-
-    if (email != userId) {
+    if (req.email != userId || req.email === undefined) {
         return res.status(411).json({
             message: "User not found. Please try again."
         })
@@ -241,14 +238,10 @@ userRouter.put("/changePassword", async (req, res) => {
     }
 })
 
-userRouter.delete("/removeUser/user/:userId/id/:id", async (req, res) => {
+userRouter.delete("/removeUser/user/:userId/id/:id", authMiddleware, async (req, res) => {
     const { userId, id } = req.params
 
-    const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
-    const email = decoded.email
-
-    if (email != userId) {
+    if (req.email != userId || req.email === undefined) {
         return res.status(411).json({
             message: "User not found. Please try again."
         })

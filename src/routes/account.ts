@@ -2,22 +2,29 @@ import express from "express"
 import { prismaClient } from "../db"
 import redis from "../redisClient"
 import jwt, { JwtPayload } from "jsonwebtoken"
+import { authMiddleware } from "../middleware/authMiddleware"
 
 const app = express()
 app.use(express.json())
 
+interface MonthlyData {
+    month: string
+    total: number
+    types: Record<string, number>
+}
+
+const initialValue: Record<string, MonthlyData> = {}
+
 export const accountRouter = express.Router();
 
-accountRouter.get("/items", async (req, res) => {
-    const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
-    const email = decoded.email
-    console.log(decoded)
+accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
+    const type = req.params.type
 
     try {
         const itemList = await prismaClient.items.findMany({
             where: {
-                userId: email
+                userId: req.email,
+                type: type
             },
             select: {
                 itemNo: true,
@@ -40,16 +47,46 @@ accountRouter.get("/items", async (req, res) => {
     }
 })
 
-accountRouter.post("/additem", async (req, res) => {
+accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
+    const { month, year } = req.query
+
+    const type = typeof req.query.type === 'string' 
+        ? req.query.type 
+        : undefined;
+
+    const startDate = new Date(Number(year), Number(month) - 1, 1)
+    const endDate = new Date(Number(year), Number(month), 0)
+
+    try {
+        const items = await prismaClient.items.findMany({
+            where: {
+                userId: req.email,
+                type: type,
+                createdAt: {
+                    gte: startDate,
+                    lte: endDate
+                }
+            },
+            select: {
+                itemNo: true,
+                item: true,
+                cost: true
+            }
+        })
+
+        res.status(200).json(items)
+    } catch (err) {
+        res.status(401).json({
+            message: "No data found"
+        })
+    }
+})
+
+accountRouter.post("/additem", authMiddleware, async (req, res) => {
     const key = `user:${req.body.userId}:itemCounter`;
     const nextItemNo = await redis.incr(key);
 
-    const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
-    const email = decoded.email
-    console.log(decoded)
-
-    if (email != req.body.userId) {
+    if (req.email != req.body.userId || req.email === undefined) {
         return res.status(411).json({
             message: "User not found. Please try again."
         })
@@ -61,7 +98,8 @@ accountRouter.post("/additem", async (req, res) => {
                 item: req.body.item,
                 itemNo: nextItemNo,
                 cost: req.body.cost,
-                userId: email
+                type: req.body.type,
+                userId: req.email
             }
         })
 
@@ -76,12 +114,9 @@ accountRouter.post("/additem", async (req, res) => {
     }
 })
 
-accountRouter.put("/changeitem", async (req, res) => {
-    const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
-    const email = decoded.email
+accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
 
-    if (!req.body.id || email != req.body.email) {
+    if (!req.body.id || req.email != req.body.email) {
         return res.status(411).json({
             message: "User not found. Please try again."
         })
@@ -131,14 +166,10 @@ accountRouter.put("/changeitem", async (req, res) => {
     }
 })
 
-accountRouter.delete("/removeitem/user/:userId/items/:itemNo", async (req, res) => {
+accountRouter.delete("/removeitem/user/:userId/items/:itemNo", authMiddleware, async (req, res) => {
     const {userId, itemNo} = req.params
 
-    const header = req.header("Authorization") || ""
-    const decoded = jwt.verify(header, process.env.JWT_SECRET || "") as JwtPayload
-    const email = decoded.email
-
-    if (email != userId) {
+    if (req.email != userId) {
         res.status(411).json({
             message: "User not found. Please try again."
         })
