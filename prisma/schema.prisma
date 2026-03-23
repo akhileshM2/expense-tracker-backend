@@ -28,7 +28,9 @@ model Items {
   item        String
   itemNo      Int
   cost        Int
+  type        String    @default("expenses")
   userId      String
+  createdAt   DateTime  @default(now())
   user        User      @relation(fields: [userId], references: [email], onDelete: Cascade)
 
   @@unique([userId, itemNo])
