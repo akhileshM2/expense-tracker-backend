@@ -1,7 +1,6 @@
 import express from "express"
 import { prismaClient } from "../db"
 import redis from "../redisClient"
-import jwt, { JwtPayload } from "jsonwebtoken"
 import { authMiddleware } from "../middleware/authMiddleware"
 
 const app = express()
