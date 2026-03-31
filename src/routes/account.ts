@@ -2,24 +2,31 @@ import express from "express"
 import { prismaClient } from "../db"
 import redis from "../redisClient"
 import { authMiddleware } from "../middleware/authMiddleware"
+import { JsonObject } from "@prisma/client/runtime/library"
 
 const app = express()
 app.use(express.json())
-
-interface MonthlyData {
-    month: string
-    total: number
-    types: Record<string, number>
-}
-
-const initialValue: Record<string, MonthlyData> = {}
 
 export const accountRouter = express.Router();
 
 accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     const type = req.params.type
 
+    const cachedKey = `currentUserData:${req.email}:${type}`
+
     try {
+        const cachedData = await redis.get(cachedKey)
+        if (cachedData) {
+            console.log("Cache Hit!");
+            console.log(cachedData)
+            return res.status(200).json({
+                items: JSON.parse(cachedData).map((items: JsonObject) => ({
+                    id: items.itemNo,
+                    item: items.item,
+                    cost: items.cost
+                }))});
+        }
+
         const itemList = await prismaClient.items.findMany({
             where: {
                 userId: req.email,
@@ -31,6 +38,8 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
                 cost: true
             }
         })
+        console.log(itemList, JSON.stringify(itemList))
+        await redis.setEx(cachedKey, 3600, JSON.stringify(itemList))
 
         return res.status(200).json({
             items: itemList.map(items => ({
@@ -52,11 +61,21 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
     const type = typeof req.query.type === 'string' 
         ? req.query.type 
         : undefined;
+    
+    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${type}`
 
     const startDate = new Date(Number(year), Number(month) - 1, 1)
     const endDate = new Date(Number(year), Number(month), 0)
 
     try {
+        const cachedData = await redis.get(cacheKeyMonthWise)
+        if (cachedData) {
+            console.log("Cache Hit!")
+            return res.json(JSON.parse(cachedData))
+        }
+
+        console.log("Cache Miss. Fetching from DB...")
+
         const items = await prismaClient.items.findMany({
             where: {
                 userId: req.email,
@@ -72,8 +91,9 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
                 cost: true
             }
         })
-
+        await redis.setEx(cacheKeyMonthWise, 3600, JSON.stringify(items))
         res.status(200).json(items)
+
     } catch (err) {
         res.status(401).json({
             message: "No data found"
@@ -84,6 +104,12 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
 accountRouter.post("/additem", authMiddleware, async (req, res) => {
     const key = `user:${req.body.userId}:itemCounter`;
     const nextItemNo = await redis.incr(key);
+    const date = new Date()
+
+    const cacheKeyMonthWise = `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${req.body.type}`
+    const cachedKey = `currentUserData:${req.email}:${req.body.type}`
+    await redis.del(cacheKeyMonthWise)
+    await redis.del(cachedKey)
 
     if (req.email != req.body.userId || req.email === undefined) {
         return res.status(411).json({
