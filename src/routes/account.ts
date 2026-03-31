@@ -11,8 +11,11 @@ export const accountRouter = express.Router();
 
 accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     const type = req.params.type
+    const date = new Date()
+    const startDate = new Date(Number(date.getFullYear()), Number(date.getMonth() + 1) - 1, 1)
+    const endDate = new Date(Number(date.getFullYear()), Number(date.getMonth() + 1), 0)
 
-    const cachedKey = `currentUserData:${req.email}:${type}`
+    const cachedKey= `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${type}`
 
     try {
         const cachedData = await redis.get(cachedKey)
@@ -30,7 +33,11 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
         const itemList = await prismaClient.items.findMany({
             where: {
                 userId: req.email,
-                type: type
+                type: type,
+                createdAt: {
+                    gte: startDate,
+                    lte: endDate
+                }
             },
             select: {
                 itemNo: true,
