@@ -140,6 +140,11 @@ accountRouter.post("/additem", authMiddleware, async (req, res) => {
 })
 
 accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
+    const date = new Date()
+    const cacheKeyMonthWise = `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${req.body.type}`
+    const cachedKey = `currentUserData:${req.email}:${req.body.type}`
+    await redis.del(cacheKeyMonthWise)
+    await redis.del(cachedKey)
 
     if (!req.body.id || req.email != req.body.email) {
         return res.status(411).json({
@@ -193,6 +198,12 @@ accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
 
 accountRouter.delete("/removeitem/user/:userId/items/:itemNo", authMiddleware, async (req, res) => {
     const {userId, itemNo} = req.params
+
+    const date = new Date()
+    const cacheKeyMonthWise = `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${req.body.type}`
+    const cachedKey = `currentUserData:${req.email}:${req.body.type}`
+    await redis.del(cacheKeyMonthWise)
+    await redis.del(cachedKey)
 
     if (req.email != userId) {
         res.status(411).json({
