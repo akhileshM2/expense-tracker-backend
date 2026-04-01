@@ -147,9 +147,9 @@ accountRouter.post("/additem", authMiddleware, async (req, res) => {
 })
 
 accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
-    const { month, year } = req.query
-    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${req.body.type}`
-    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${req.body.type}`
+    const { month, year, type } = req.query
+    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${type}`
+    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${type}`
     await redis.del(cacheKeyMonthWise)
     await redis.del(cachedKey)
 
@@ -206,9 +206,9 @@ accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
 accountRouter.delete("/removeitem/user/:userId/items/:itemNo", authMiddleware, async (req, res) => {
     const {userId, itemNo} = req.params
 
-    const { month, year } = req.query
-    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${req.body.type}`
-    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${req.body.type}`
+    const { month, year, type } = req.query
+    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${type}`
+    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${type}`
     await redis.del(cacheKeyMonthWise)
     await redis.del(cachedKey)
 
