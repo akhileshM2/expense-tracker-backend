@@ -111,10 +111,10 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
 accountRouter.post("/additem", authMiddleware, async (req, res) => {
     const key = `user:${req.body.userId}:itemCounter`;
     const nextItemNo = await redis.incr(key);
-    const date = new Date()
+    const { month, year } = req.query
 
-    const cacheKeyMonthWise = `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${req.body.type}`
-    const cachedKey = `currentUserData:${req.email}:${req.body.type}`
+    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${req.body.type}`
+    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${req.body.type}`
     await redis.del(cacheKeyMonthWise)
     await redis.del(cachedKey)
 
@@ -147,9 +147,9 @@ accountRouter.post("/additem", authMiddleware, async (req, res) => {
 })
 
 accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
-    const date = new Date()
-    const cacheKeyMonthWise = `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${req.body.type}`
-    const cachedKey = `currentUserData:${req.email}:${req.body.type}`
+    const { month, year } = req.query
+    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${req.body.type}`
+    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${req.body.type}`
     await redis.del(cacheKeyMonthWise)
     await redis.del(cachedKey)
 
@@ -206,9 +206,9 @@ accountRouter.put("/changeitem", authMiddleware, async (req, res) => {
 accountRouter.delete("/removeitem/user/:userId/items/:itemNo", authMiddleware, async (req, res) => {
     const {userId, itemNo} = req.params
 
-    const date = new Date()
-    const cacheKeyMonthWise = `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${req.body.type}`
-    const cachedKey = `currentUserData:${req.email}:${req.body.type}`
+    const { month, year } = req.query
+    const cacheKeyMonthWise = `history:${req.email}:${month}:${year}:${req.body.type}`
+    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${req.body.type}`
     await redis.del(cacheKeyMonthWise)
     await redis.del(cachedKey)
 
