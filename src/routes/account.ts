@@ -11,17 +11,17 @@ export const accountRouter = express.Router();
 
 accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     const type = req.params.type
-    const date = new Date()
-    const startDate = new Date(Number(date.getFullYear()), Number(date.getMonth() + 1) - 1, 1)
-    const endDate = new Date(Number(date.getFullYear()), Number(date.getMonth() + 1), 0)
 
-    const cachedKey= `history:${req.email}:${date.getMonth() + 1}:${date.getFullYear()}:${type}`
+    const { month, year } = req.query
+    const startDate = new Date(Number(year), Number(month) - 1, 1)
+    const endDate = new Date(Number(year), Number(month), 0)
+
+    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${type}`
 
     try {
         const cachedData = await redis.get(cachedKey)
         if (cachedData) {
-            console.log("Cache Hit!");
-            console.log(cachedData)
+            console.log("Cache Hit 1!");
             return res.status(200).json({
                 items: JSON.parse(cachedData).map((items: JsonObject) => ({
                     id: items.itemNo,
@@ -29,7 +29,7 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
                     cost: items.cost
                 }))});
         }
-
+        console.log("Cache Miss 1. Fetching from DB...")
         const itemList = await prismaClient.items.findMany({
             where: {
                 userId: req.email,
@@ -45,7 +45,7 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
                 cost: true
             }
         })
-        console.log(itemList, JSON.stringify(itemList))
+  
         await redis.setEx(cachedKey, 3600, JSON.stringify(itemList))
 
         return res.status(200).json({
@@ -77,11 +77,11 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
     try {
         const cachedData = await redis.get(cacheKeyMonthWise)
         if (cachedData) {
-            console.log("Cache Hit!")
+            console.log("Cache Hit 2!")
             return res.json(JSON.parse(cachedData))
         }
 
-        console.log("Cache Miss. Fetching from DB...")
+        console.log("Cache Miss 2. Fetching from DB...")
 
         const items = await prismaClient.items.findMany({
             where: {
