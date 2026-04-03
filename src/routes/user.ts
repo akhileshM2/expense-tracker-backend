@@ -1,9 +1,10 @@
 import express from "express"
 import { prismaClient } from "../db";
 import { z } from "zod";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import bcrypt from 'bcrypt';
 import { authMiddleware } from "../middleware/authMiddleware";
+import redis from "../redisClient";
 
 export const userRouter = express.Router()
 
@@ -149,6 +150,45 @@ userRouter.post("/signin", async (req, res) => {
         }
 
         else {
+            const date = new Date()
+            const month = date.getMonth() + 1
+            const year = date.getFullYear()
+            const type = "expenses"
+            const startDate = new Date(Number(year), Number(month) - 1, 1)
+            const endDate = new Date(Number(year), Number(month), 0)
+
+            const cachedKey= `currentUserData:${req.body.email}:${month}:${year}:${type}`
+
+            const cachedData = await redis.get(cachedKey)
+            if (cachedData) {
+                console.log("Cache Hit 3!");
+
+                const token = "Bearer " + jwt.sign({email}, process.env.JWT_SECRET || "")
+                return res.status(200).json({
+                    token: token,
+                    name: request? request.name : null,
+                    email: request?.email,
+                    id: request.id
+                })
+            }
+            console.log("Fetching from DB...")
+            const itemList = await prismaClient.items.findMany({
+                where: {
+                    userId: req.email,
+                    type: type,
+                    createdAt: {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                },
+                select: {
+                    itemNo: true,
+                    item: true,
+                    cost: true
+                }
+            })
+    
+            await redis.setEx(cachedKey, 3600, JSON.stringify(itemList))
             const token = "Bearer " + jwt.sign({email}, process.env.JWT_SECRET || "")
             return res.status(200).json({
                 token: token,
