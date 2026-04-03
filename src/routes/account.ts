@@ -16,7 +16,7 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     const startDate = new Date(Number(year), Number(month) - 1, 1)
     const endDate = new Date(Number(year), Number(month), 0)
 
-    const cachedKey= `currentUserData:${req.email}:${month}:${year}:${type}`
+    const cachedKey = `currentUserData:${req.email}:${month}:${year}:${type}`
 
     try {
         const cachedData = await redis.get(cachedKey)
