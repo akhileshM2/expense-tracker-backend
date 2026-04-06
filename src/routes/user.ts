@@ -187,8 +187,14 @@ userRouter.post("/signin", async (req, res) => {
                     cost: true
                 }
             })
+
+            const items = itemList.map(items => ({
+                id: items.itemNo,
+                item: items.item,
+                cost: items.cost
+            }))
     
-            await redis.setEx(cachedKey, 3600, JSON.stringify(itemList))
+            await redis.setEx(cachedKey, 20, JSON.stringify(items))
             const token = "Bearer " + jwt.sign({email}, process.env.JWT_SECRET || "")
             return res.status(200).json({
                 token: token,

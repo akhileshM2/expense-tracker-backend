@@ -25,7 +25,7 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
             
             return res.status(200).json({
                 items: JSON.parse(cachedData).map((items: JsonObject) => ({
-                    id: items.itemNo,
+                    id: items.id,
                     item: items.item,
                     cost: items.cost
                 }))});
@@ -46,16 +46,16 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
                 cost: true
             }
         })
-  
-        await redis.setEx(cachedKey, 3600, JSON.stringify(itemList))
 
-        return res.status(200).json({
-            items: itemList.map(items => ({
-                id: items.itemNo,
-                item: items.item,
-                cost: items.cost
-            }))
-        })
+        const items = itemList.map(items => ({
+            id: items.itemNo,
+            item: items.item,
+            cost: items.cost
+        }))
+  
+        await redis.setEx(cachedKey, 20, JSON.stringify(items))
+
+        return res.status(200).json({items})
     } catch(err) {
         res.status(411).json({
             message: "Error while fetching items."
@@ -84,7 +84,7 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
 
         console.log("Cache Miss 2. Fetching from DB...")
 
-        const items = await prismaClient.items.findMany({
+        const itemList = await prismaClient.items.findMany({
             where: {
                 userId: req.email,
                 type: type,
@@ -99,7 +99,14 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
                 cost: true
             }
         })
-        await redis.setEx(cacheKeyMonthWise, 3600, JSON.stringify(items))
+
+        const items = itemList.map(items => ({
+            id: items.itemNo,
+            item: items.item,
+            cost: items.cost
+        }))
+
+        await redis.setEx(cacheKeyMonthWise, 20, JSON.stringify(items))
         res.status(200).json(items)
 
     } catch (err) {
