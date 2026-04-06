@@ -53,7 +53,7 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
             cost: items.cost
         }))
   
-        await redis.setEx(cachedKey, 20, JSON.stringify(items))
+        await redis.setEx(cachedKey, 3600, JSON.stringify(items))
 
         return res.status(200).json({items})
     } catch(err) {
@@ -106,7 +106,7 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
             cost: items.cost
         }))
 
-        await redis.setEx(cacheKeyMonthWise, 20, JSON.stringify(items))
+        await redis.setEx(cacheKeyMonthWise, 3600, JSON.stringify(items))
         res.status(200).json(items)
 
     } catch (err) {
