@@ -12,9 +12,12 @@ export const accountRouter = express.Router();
 accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     const type = req.params.type
 
-    const { month, year } = req.query
-    const startDate = new Date(Number(year), Number(month) - 1, 1)
-    const endDate = new Date(Number(year), Number(month), 0)
+    const month = parseInt(req.query.month as string)
+    const year = parseInt(req.query.year as string)
+    
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+    console.log(startDate, endDate)
 
     const cachedKey = `currentUserData:${req.email}:${month}:${year}:${type}`
 
