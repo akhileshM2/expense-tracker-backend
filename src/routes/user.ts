@@ -161,9 +161,8 @@ userRouter.post("/signin", async (req, res) => {
 
             const cachedData = await redis.get(cachedKey)
             if (cachedData) {
-                console.log("Cache Hit 3!");
-
                 const token = "Bearer " + jwt.sign({email}, process.env.JWT_SECRET || "")
+
                 return res.status(200).json({
                     token: token,
                     name: request? request.name : null,
@@ -171,7 +170,7 @@ userRouter.post("/signin", async (req, res) => {
                     id: request.id
                 })
             }
-            console.log("Fetching from DB...")
+
             const itemList = await prismaClient.items.findMany({
                 where: {
                     userId: req.body.email,

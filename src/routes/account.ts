@@ -17,15 +17,12 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     
     const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
-    console.log(startDate, endDate)
 
     const cachedKey = `currentUserData:${req.email}:${month}:${year}:${type}`
 
     try {
         const cachedData = await redis.get(cachedKey)
         if (cachedData) {
-            console.log("Cache Hit 1!");
-            
             return res.status(200).json({
                 items: JSON.parse(cachedData).map((items: JsonObject) => ({
                     id: items.id,
@@ -33,7 +30,7 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
                     cost: items.cost
                 }))});
         }
-        console.log("Cache Miss 1. Fetching from DB...")
+
         const itemList = await prismaClient.items.findMany({
             where: {
                 userId: req.email,
@@ -81,11 +78,8 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
     try {
         const cachedData = await redis.get(cacheKeyMonthWise)
         if (cachedData) {
-            console.log("Cache Hit 2!")
             return res.json(JSON.parse(cachedData))
         }
-
-        console.log("Cache Miss 2. Fetching from DB...")
 
         const itemList = await prismaClient.items.findMany({
             where: {
