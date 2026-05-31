@@ -154,8 +154,8 @@ userRouter.post("/signin", async (req, res) => {
             const month = date.getMonth() + 1
             const year = date.getFullYear()
             const type = "expenses"
-            const startDate = new Date(Number(year), Number(month) - 1, 1)
-            const endDate = new Date(Number(year), Number(month), 0)
+            const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
+            const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
 
             const cachedKey = `currentUserData:${req.body.email}:${month}:${year}:${type}`
 
