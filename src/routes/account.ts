@@ -17,12 +17,14 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
     
     const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+    console.log(startDate, endDate)
 
     const cachedKey = `currentUserData:${req.email}:${month}:${year}:${type}`
 
     try {
         const cachedData = await redis.get(cachedKey)
         if (cachedData) {
+            console.log(cachedData)
             return res.status(200).json({
                 items: JSON.parse(cachedData).map((items: JsonObject) => ({
                     id: items.id,
@@ -43,9 +45,12 @@ accountRouter.get("/items/:type", authMiddleware, async (req, res) => {
             select: {
                 itemNo: true,
                 item: true,
-                cost: true
+                cost: true,
+                createdAt: true
             }
         })
+
+        console.log(itemList)
 
         const items = itemList.map(items => ({
             id: items.itemNo,
@@ -75,6 +80,7 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
     
     const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+    console.log(startDate, endDate)
 
     try {
         const cachedData = await redis.get(cacheKeyMonthWise)
