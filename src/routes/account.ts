@@ -122,7 +122,30 @@ accountRouter.get("/monthly-summary", authMiddleware, async (req, res) => {
 
 accountRouter.post("/additem", authMiddleware, async (req, res) => {
     const key = `user:${req.body.userId}:itemCounter`;
-    const nextItemNo = await redis.incr(key);
+    let nextItemNo: number
+    let cachedNo = await redis.get(key)
+
+    if (cachedNo) {
+        nextItemNo = parseInt(cachedNo)
+        await redis.incr(key)
+    }
+    else {
+        const lastItemNo = await prismaClient.items.findFirst({
+            where: { 
+                userId: req.email
+            },
+            orderBy: {
+                itemNo: "desc"
+            },
+            select: {
+                itemNo: true
+            }
+        });
+
+        nextItemNo = lastItemNo ? lastItemNo.itemNo + 1 : 1;
+        await redis.set(`user:${req.email}:itemCounter`, (nextItemNo + 1).toString());
+    }
+
     const month = parseInt(req.query.month as string)
     const year = parseInt(req.query.year as string)
 
@@ -137,7 +160,16 @@ accountRouter.post("/additem", authMiddleware, async (req, res) => {
         })
     }
 
+    console.log({
+        item: req.body.item,
+        itemNo: nextItemNo,
+        cost: req.body.cost,
+        type: req.body.type,
+        userId: req.email
+    })
+    
     try {
+        console.log("Adding item...")
         const request = await prismaClient.items.create({
             data: {
                 item: req.body.item,
@@ -153,6 +185,7 @@ accountRouter.post("/additem", authMiddleware, async (req, res) => {
             id: request.itemNo
         })
     } catch(err) {
+        console.log(err)
         res.status(411).json({
             message: "Error while adding item."
         })
