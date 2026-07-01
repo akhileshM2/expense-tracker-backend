@@ -26,34 +26,40 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-backend:latest
           build-args: |
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            
+      - name: Trigger Render Deployment
+        env:
+          deploy_url: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          curl -X POST "$deploy_url"
 
-  deploy-to-ec2:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    environment: DATABASE_URL
-    steps:
-      - name: SSH into EC2 and Update Container
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # 1. Login to Docker (if the repo is private)
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+  # deploy-to-ec2:
+  #   needs: build-and-push
+  #   runs-on: ubuntu-latest
+  #   environment: DATABASE_URL
+  #   steps:
+  #     - name: SSH into EC2 and Update Container
+  #       uses: appleboy/ssh-action@master
+  #       with:
+  #         host: ${{ secrets.EC2_HOST }}
+  #         username: ubuntu
+  #         key: ${{ secrets.EC2_SSH_KEY }}
+  #         script: |
+  #           # 1. Login to Docker (if the repo is private)
+  #           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             
-            # 2. Pull the latest image
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-backend:latest
+  #           # 2. Pull the latest image
+  #           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-backend:latest
             
-            # 3. Stop and remove the old container
-            docker stop backend-container || true
-            docker rm backend-container || true
+  #           # 3. Stop and remove the old container
+  #           docker stop backend-container || true
+  #           docker rm backend-container || true
             
-            # 4. Run the new container with the live DATABASE_URL
-            docker run -d \
-              --name backend-container \
-              -p 3000:3000 \
-              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-backend:latest
+  #           # 4. Run the new container with the live DATABASE_URL
+  #           docker run -d \
+  #             --name backend-container \
+  #             -p 3000:3000 \
+  #             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+  #             -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+  #             ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-backend:latest
               
